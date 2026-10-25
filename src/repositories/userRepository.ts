@@ -9,7 +9,7 @@ export class UserRepository {
     const db = await getDb();
     const where = params.role ? eq(users.role, params.role) : undefined;
 
-    // passwordHash sengaja tidak di-select
+    // Password hash tidak dikembalikan
     const rows = await db
       .select({
         id: users.id,
@@ -25,12 +25,51 @@ export class UserRepository {
       .fetch(params.limit);
 
     const totals = await db.select({ total: count() }).from(users).where(where);
-    return { rows, total: Number(totals[0]?.total ?? 0) };
+
+    return {
+      rows,
+      total: Number(totals[0]?.total ?? 0),
+    };
   }
 
-  async create(input: { name: string; email: string; passwordHash: string; role: Role }) {
+  async create(input: {
+    name: string;
+    email: string;
+    passwordHash: string;
+    role: Role;
+  }) {
     const db = await getDb();
     const rows = await db.insert(users).output().values(input);
+
+    return rows[0];
+  }
+
+  async findByEmail(email: string) {
+    const db = await getDb();
+
+    const rows = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email));
+
+    return rows[0];
+  }
+
+  // Mengambil user berdasarkan ID
+  async findById(id: number) {
+    const db = await getDb();
+
+    const rows = await db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        role: users.role,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .where(eq(users.id, id));
+
     return rows[0];
   }
 }

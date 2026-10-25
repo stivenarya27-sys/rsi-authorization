@@ -4,9 +4,19 @@ const doc = {
   info: { title: 'Review Kantin API', version: '1.0.0' },
   servers: [{ url: 'http://localhost:3000' }],
 
+  // Konfigurasi autentikasi JWT
+  securityDefinitions: {
+    BearerAuth: {
+      type: 'apiKey',
+      name: 'Authorization',
+      in: 'header',
+      description:
+        'Isi dengan: Bearer <token>  (tulis kata Bearer, satu spasi, lalu token)',
+    },
+  },
+
   definitions: {
     StallInput: {
-      $ownerId: 2,
       $name: 'Warung Baru',
       category: 'Nasi',
       location: 'Kantin FK',
@@ -17,7 +27,6 @@ const doc = {
       $name: 'Budi Santoso',
       $email: 'budi@student.test',
       $password: 'rahasia123',
-      role: 'customer',
     },
 
     MenuItemInput: {
@@ -28,15 +37,12 @@ const doc = {
     },
 
     ReviewInput: {
-      $stallId: 1,
-      $userId: 1,
       $rating: 5,
       comment: 'Makanannya enak dan pelayanannya cepat',
     },
 
     LikeInput: {
       $reviewId: 1,
-      $userId: 1,
     },
 
     FlagUpdateInput: {
@@ -44,11 +50,10 @@ const doc = {
     },
 
     AuditInput: {
-      $userId: 1,
       $action: 'CREATE',
       $targetTable: 'stalls',
       $targetId: 1,
-      $metadata: {},
+      metadata: {},
     },
   },
 };

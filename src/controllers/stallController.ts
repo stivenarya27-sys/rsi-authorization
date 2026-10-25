@@ -1,5 +1,7 @@
 import type { Request, Response } from 'express';
 import { StallService } from '../services/stallService.ts';
+import type { AuthRequest } from '../utils/auth.ts';
+import { sendError } from '../utils/errors.ts';
 
 export class StallController {
   private stallService: StallService;
@@ -10,21 +12,27 @@ export class StallController {
 
   private handleError(res: Response, error: unknown): Response {
     if (error instanceof Error && error.message === 'STALL_NOT_FOUND') {
-      return res.status(404).json({ status: 'fail', message: 'Data warung tidak ditemukan' });
+      return res
+        .status(404)
+        .json({ status: 'fail', message: 'Data warung tidak ditemukan' });
     }
-    return res.status(500).json({
-      status: 'error',
-      message: 'Terjadi kesalahan pada server',
-      error: error instanceof Error ? error.message : String(error),
-    });
+    if (error instanceof Error && error.message === 'FORBIDDEN_NOT_OWNER') {
+      return res.status(403).json({
+        status: 'fail',
+        message: 'Anda hanya boleh mengubah warung milik Anda sendiri',
+      });
+    }
+    return sendError(res, error);
   }
 
   getStalls = async (req: Request, res: Response): Promise<Response> => {
     try {
       const page = Number(req.query.page) || 1;
       const limit = Number(req.query.limit) || 10;
-      const search = typeof req.query.search === 'string' ? req.query.search : undefined;
-      const category = typeof req.query.category === 'string' ? req.query.category : undefined;
+      const search =
+        typeof req.query.search === 'string' ? req.query.search : undefined;
+      const category =
+        typeof req.query.category === 'string' ? req.query.category : undefined;
 
       const { data, total } = await this.stallService.getAllStalls({
         search,
@@ -33,7 +41,9 @@ export class StallController {
         limit,
       });
 
-      return res.status(200).json({ status: 'success', meta: { page, limit, total }, data });
+      return res
+        .status(200)
+        .json({ status: 'success', meta: { page, limit, total }, data });
     } catch (error) {
       return this.handleError(res, error);
     }
@@ -50,25 +60,45 @@ export class StallController {
 
   getStallMenus = async (req: Request, res: Response): Promise<Response> => {
     try {
-      const menus = await this.stallService.getStallMenus(Number(req.params.id));
+      const menus = await this.stallService.getStallMenus(
+        Number(req.params.id),
+      );
       return res.status(200).json({ status: 'success', data: menus });
     } catch (error) {
       return this.handleError(res, error);
     }
   };
 
-  createStall = async (req: Request, res: Response): Promise<Response> => {
+  createStall = async (req: AuthRequest, res: Response): Promise<Response> => {
     try {
-      const stall = await this.stallService.createStall(req.body);
+      if (!req.user) {
+        return res
+          .status(401)
+          .json({ status: 'fail', message: 'Anda belum login' });
+      }
+      // ownerId dari token, bukan dari body
+      const stall = await this.stallService.createStall({
+        ...req.body,
+        ownerId: req.user.id,
+      });
       return res.status(201).json({ status: 'success', data: stall });
     } catch (error) {
       return this.handleError(res, error);
     }
   };
 
-  updateStall = async (req: Request, res: Response): Promise<Response> => {
+  updateStall = async (req: AuthRequest, res: Response): Promise<Response> => {
     try {
-      const stall = await this.stallService.updateStall(Number(req.params.id), req.body);
+      if (!req.user) {
+        return res
+          .status(401)
+          .json({ status: 'fail', message: 'Anda belum login' });
+      }
+      const stall = await this.stallService.updateStall(
+        Number(req.params.id),
+        req.body,
+        req.user,
+      );
       return res.status(200).json({ status: 'success', data: stall });
     } catch (error) {
       return this.handleError(res, error);

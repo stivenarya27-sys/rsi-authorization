@@ -4,6 +4,7 @@ import {
   type FindAllParams,
 } from '../repositories/stallRepository.ts';
 import { MenuItemRepository } from '../repositories/menuItemRepository.ts';
+import type { Role } from '../repositories/userRepository.ts';
 import type { MenuItemDto, StallResponseDto } from '../dtos/stallDto.ts';
 
 type StallRow = NonNullable<Awaited<ReturnType<StallRepository['findById']>>>;
@@ -59,7 +60,19 @@ export class StallService {
     return this.toDto(row);
   }
 
-  async updateStall(id: number, input: Partial<CreateStallInput>): Promise<StallResponseDto> {
+  async updateStall(
+    id: number,
+    input: Partial<CreateStallInput>,
+    user: { id: number; role: Role },
+  ): Promise<StallResponseDto> {
+    const existing = await this.stallRepository.findById(id);
+    if (!existing) throw new Error('STALL_NOT_FOUND');
+
+    // Owner hanya boleh mengubah warung miliknya. Admin bebas.
+    if (user.role === 'owner' && existing.ownerId !== user.id) {
+      throw new Error('FORBIDDEN_NOT_OWNER');
+    }
+
     const row = await this.stallRepository.update(id, input);
     if (!row) throw new Error('STALL_NOT_FOUND');
     return this.toDto(row);
