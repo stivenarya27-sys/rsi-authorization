@@ -1,3 +1,4 @@
+
 import express, {
   type Request,
   type Response,
@@ -13,7 +14,7 @@ import swaggerDocument from './docs/swagger-output.json' with { type: 'json' };
 import { getDb } from './db/index.ts';
 
 import { stallRouter } from './routes/stallRouter.ts';
-import { userRouter, authRouter } from './routes/userRouter.ts';
+import { authRouter } from './routes/userRouter.ts';
 import { menuItemRouter } from './routes/menuItemRouter.ts';
 import { reviewRouter } from './routes/reviewRouter.ts';
 import { likeRouter } from './routes/likeRouter.ts';
@@ -50,9 +51,6 @@ app.get('/health', async (req: Request, res: Response) => {
 // Routes
 app.use('/api/v1/stalls', stallRouter);
 
-// Daftar user tetap tersedia
-app.use('/api/v1/users', userRouter);
-
 // Autentikasi
 app.use('/api/v1/auth', authRouter);
 
@@ -64,22 +62,30 @@ app.use('/api/v1/audit', auditRouter);
 
 // Rute tidak dikenal -> JSON
 app.use((req: Request, res: Response) => {
-  res.status(404).json({ status: 'fail', message: 'Endpoint tidak ditemukan' });
+  res.status(404).json({
+    status: 'fail',
+    message: 'Endpoint tidak ditemukan',
+  });
 });
 
-// Handler error global -> JSON, bukan halaman HTML
-app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-  if (err?.type === 'entity.parse.failed') {
-    return res
-      .status(400)
-      .json({ status: 'fail', message: 'Format JSON tidak valid' });
-  }
+// Handler error global -> JSON
+app.use(
+  (err: any, req: Request, res: Response, next: NextFunction) => {
+    if (err?.type === 'entity.parse.failed') {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Format JSON tidak valid',
+      });
+    }
 
-  console.error(err);
-  return res
-    .status(500)
-    .json({ status: 'error', message: 'Terjadi kesalahan pada server' });
-});
+    console.error(err);
+
+    return res.status(500).json({
+      status: 'error',
+      message: 'Terjadi kesalahan pada server',
+    });
+  },
+);
 
 app.listen(PORT, () => {
   console.log(`Server berjalan di http://localhost:${PORT}`);
